@@ -2,7 +2,7 @@ module Main where
 
 import Control.Monad (when, forM_)
 import Control.Exception (try)
-import System.IO (stdin, hSetEcho, hSetBuffering, hReady, BufferMode (NoBuffering) )
+import System.IO (stdin, stdout, hSetEcho, hSetBuffering, hReady, BufferMode (NoBuffering) )
 import ViewUtils (clearScreen, showInRectangle, clearRectangle, showInGrid, drawGrid, highlightCell, printFromBottom)
 
 data RowData = Row { smth :: String } deriving Eq
@@ -43,6 +43,7 @@ addDebugMessagesListener listener (AppStateListeners _rowsListeners _activeCellY
 main :: IO ()
 main = do
   hSetBuffering stdin NoBuffering
+  hSetBuffering stdout NoBuffering
   hSetEcho stdin False
   let appState = AppState initialRows Nothing [] initListeners
   clearScreen
@@ -56,6 +57,12 @@ main = do
     rowCount = length initialRows
     debugLinesCount = 20
 
+    initListeners :: AppStateListenersData
+    -- initListeners =
+    --     addRowsListener mainRowsListener
+    --     (addActiveCellYListener activeCellYListener
+    --     (addDebugMessagesListener debugMessagesListener
+    --     (empty)))
     initListeners =
         addRowsListener mainRowsListener
         $ addActiveCellYListener activeCellYListener
@@ -64,6 +71,7 @@ main = do
       where
         empty = AppStateListeners [] [] []
 
+    mainRowsListener :: [RowData] -> IO ()
     mainRowsListener rows = do
       showInGrid
         xUpperLeft
@@ -73,6 +81,7 @@ main = do
         Nothing
         (map (\row -> [smth row]) rows)
 
+    activeCellYListener :: Maybe Int -> IO ()
     activeCellYListener activeCellY = do
       let activeCellCoords = fmap (\y -> (0, y)) activeCellY
       drawGrid xUpperLeft yUpperLeft columnWidth columnCount rowCount
@@ -80,12 +89,14 @@ main = do
         Nothing -> return ()
         Just coordsPair -> highlightCell xUpperLeft yUpperLeft columnWidth columnCount rowCount coordsPair
 
+    debugMessagesListener :: [String] -> IO ()
     debugMessagesListener debugMessages = do
       printFromBottom
         xUpperLeft
         (yUpperLeft+12+debugLinesCount)
         debugMessages
 
+    loop :: AppStateData -> IO ()
     loop appState@(AppState rows activeCellY debugMessages listenersHolder) = do
       key <- getKey
       when (key /= "\ESC") $ do
